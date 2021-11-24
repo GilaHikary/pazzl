@@ -1,25 +1,26 @@
 function solvePuzzle(pieces) {
   const result = [];
-  const rows = 10;
-  const cols = 10;
+  const ROWS = 10;
+  const COLS = 10;
+
   //найти 1 элемент в строке
-  for (let j = 0; j < rows; j++) {
+  for (let j = 0; j < ROWS; j++) {
     if (!result.length) {
       result.push(addRotatedPiece(pieces[0]));
       pieces.shift();
     }
     else {
       //первый элемент в строке соединяется через верхнюю грань с элементом над ним
-      let nextPiece = pieces.find((element) => !!element.edges && checkPiece(element, result[(j - 1) * cols].edges.bottom.edgeTypeId));
-      result.push(addRotatedPiece(nextPiece, result[(j - 1) * cols].edges.bottom.edgeTypeId, "top"));
-      pieces.splice(pieces.indexOf(nextPiece), 1);
+      const nextPiece = pieces.findIndex((element) => !!element.edges && checkPiece(element, result[(j - 1) * COLS].edges.bottom.edgeTypeId));
+      result.push(addRotatedPiece(pieces[nextPiece], result[(j - 1) * COLS].edges.bottom.edgeTypeId, "top"));
+      pieces.splice(nextPiece, 1);
     }
     //заполнить строку (первый элемент там уже есть)
-    for (let i = 1; i < cols; i++) {
+    for (let i = 1; i < COLS; i++) {
       //последующие элементы в строке соединяются через левую грань с предыдущим
-      let nextPiece = pieces.find((element) => !!element.edges && checkPiece(element, result[j * cols + i - 1].edges.right.edgeTypeId));
-      result.push(addRotatedPiece(nextPiece, result[j * cols + i - 1].edges.right.edgeTypeId, "left"));
-      pieces.splice(pieces.indexOf(nextPiece), 1);
+      const nextPiece = pieces.findIndex((element) => !!element.edges && checkPiece(element, result[j * COLS + i - 1].edges.right.edgeTypeId));
+      result.push(addRotatedPiece(pieces[nextPiece], result[j * COLS + i - 1].edges.right.edgeTypeId, "left"));
+      pieces.splice(nextPiece, 1);
     }
   }
   return result.map((item) => item.id);
@@ -50,27 +51,21 @@ function addRotatedPiece(piece, edge = null, nameEdge = "") {
 }
 //поворот по часовой стрелке
 function rotatePiece(piece) {
-  let tmpB = piece.edges.bottom;
-  let tmpL = piece.edges.left;
-  let tmpT = piece.edges.top;
-
-  piece.edges.bottom = piece.edges.right;
-  piece.edges.left = tmpB;
-  piece.edges.top = tmpL;
-  piece.edges.right = tmpT;
-
+  const tmp = [...Object.values(piece.edges)];
+  piece.edges.top = tmp[3];
+  piece.edges.right = tmp[0];
+  piece.edges.bottom = tmp[1];
+  piece.edges.left = tmp[2];
   return piece;
 }
 function checkPiece(pieceChecked, edgeTypeId) {
-  let flag = false;
   //проверяем все 4 стороны
-  for (const edge in pieceChecked.edges) {
-    if (!!pieceChecked.edges[edge] && pieceChecked.edges[edge].edgeTypeId === edgeTypeId) {
-      flag = true;
-      break;
+  for (const edge of Object.values(pieceChecked.edges)) {
+    if (!!edge && edge.edgeTypeId === edgeTypeId) {
+      return true;
     }
   }
-  return flag;
+  return false;
 }
 // Не удаляйте эту строку
 window.solvePuzzle = solvePuzzle;
