@@ -1,76 +1,77 @@
 function solvePuzzle(pieces) {
   const result = [];
-  const rows = 10;
-  const cols = 10;
-  //найти 1 элемент в строке
-  for (let j = 0; j < rows; j++) {
-    if (!result.length) {
-      result.push(addRotatedPiece(pieces[0]));
-      pieces.shift();
+  const mapTmp = new Map();
+  result.push(rotateFirstPiece(pieces[0]));
+  pieces.shift()
+  pieces.forEach(element => {
+    for (const edge of Object.values(element.edges)) {
+      if (!!edge)
+        mapTmp.set(edge.edgeTypeId + edge.type, element);
     }
-    else {
-      //первый элемент в строке соединяется через верхнюю грань с элементом над ним
-      let nextPiece = pieces.find((element) => !!element.edges && checkPiece(element, result[(j - 1) * cols].edges.bottom.edgeTypeId));
-      result.push(addRotatedPiece(nextPiece, result[(j - 1) * cols].edges.bottom.edgeTypeId, "top"));
-      pieces.splice(pieces.indexOf(nextPiece), 1);
-    }
-    //заполнить строку (первый элемент там уже есть)
-    for (let i = 1; i < cols; i++) {
-      //последующие элементы в строке соединяются через левую грань с предыдущим
-      let nextPiece = pieces.find((element) => !!element.edges && checkPiece(element, result[j * cols + i - 1].edges.right.edgeTypeId));
-      result.push(addRotatedPiece(nextPiece, result[j * cols + i - 1].edges.right.edgeTypeId, "left"));
-      pieces.splice(pieces.indexOf(nextPiece), 1);
-    }
-  }
+  });
+
+  addFindAndRotatedPiece(result, pieces, mapTmp);
   return result.map((item) => item.id);
 }
-/*
-piece - поворачиваемый элемент
-edge - грань, которая должна оказаться со стороны nameEdge
-nameEdge - сторона элемента, которой соединяем с предыдущим элементом
-*/
-function addRotatedPiece(piece, edge = null, nameEdge = "") {
-  if (!nameEdge) {
-    if (!piece.edges.top && !piece.edges.left) {
-      return piece;
-    }
-    else {
-      piece = addRotatedPiece(rotatePiece(piece));
-    }
+function rotateFirstPiece(piece) {
+  if (!piece.edges.top && !piece.edges.left) {
+    return piece;
   }
   else {
-    if (!piece.edges[nameEdge] || piece.edges[nameEdge].edgeTypeId !== edge) {
-      piece = addRotatedPiece(rotatePiece(piece), edge, nameEdge);
+    return rotateFirstPiece(rotatePiece(piece));
+  }
+}
+function addFindAndRotatedPiece(result, pieces, mapTmp) {
+  const COLS = 10;
+  let side = "";
+  //ищем такой же элемент, какой нам надо, только с другим направлением ушка
+  //ищем по правой грани
+  if (!!result[result.length - 1].edges.right && result[result.length - 1].edges.right.type == "inside") {
+    side = result[result.length - 1].edges.right.edgeTypeId + "outside";
+  } else if (!!result[result.length - 1].edges.right && result[result.length - 1].edges.right.type == "outside") {
+    side = result[result.length - 1].edges.right.edgeTypeId + "inside";
+  }
+  let t = mapTmp.get(side);
+  if (!t) {
+    //если нет правой грани (значит это крайний элемент в ряду), то ищем по нижней (в начале ряда)
+    if (!!result[result.length - COLS].edges.bottom && result[result.length - COLS].edges.bottom.type == "inside") {
+      side = result[result.length - COLS].edges.bottom.edgeTypeId + "outside";
+    } else if (!!result[result.length - COLS].edges.bottom && result[result.length - COLS].edges.bottom.type == "outside") {
+      side = result[result.length - COLS].edges.bottom.edgeTypeId + "inside";
+    }
+    t = mapTmp.get(side);
+  }
+  if (!!t) {
+    let tmpBottom = null;
+    let tmpRight = null;
+    if (!!result[result.length - COLS] && !!result[result.length - COLS].edges.bottom) {
+      tmpBottom = result[result.length - COLS].edges.bottom.edgeTypeId;
+    }
+    if (!!result[result.length - 1] && !!result[result.length - 1].edges.right) {
+      tmpRight = result[result.length - 1].edges.right.edgeTypeId;
+    }
+    //сравниваем найденный кусочек по левой и верхней граням с правой и нижней другого кусочка
+    if ((t.edges.top == tmpBottom || (!!t.edges.top && t.edges.top.edgeTypeId == tmpBottom)) &&
+      (t.edges.left == tmpRight || (!!t.edges.left && t.edges.left.edgeTypeId == tmpRight))) {
+      result.push(t);
     }
     else {
-      return piece;
+      t = rotatePiece(t);//значит надо повернуть
     }
+    return addFindAndRotatedPiece(result, pieces, mapTmp);
   }
-  return piece;
 }
-//поворот по часовой стрелке
+
+//поворот против часовой стрелки
+//при таком повороте верное положение находится быстрее
+//видимо специально так сделано
 function rotatePiece(piece) {
-  let tmpB = piece.edges.bottom;
-  let tmpL = piece.edges.left;
-  let tmpT = piece.edges.top;
-
-  piece.edges.bottom = piece.edges.right;
-  piece.edges.left = tmpB;
-  piece.edges.top = tmpL;
-  piece.edges.right = tmpT;
-
+  const tmp = [...Object.values(piece.edges)];
+  piece.edges.top = tmp[1];
+  piece.edges.right = tmp[2];
+  piece.edges.bottom = tmp[3];
+  piece.edges.left = tmp[0];
   return piece;
-}
-function checkPiece(pieceChecked, edgeTypeId) {
-  let flag = false;
-  //проверяем все 4 стороны
-  for (const edge in pieceChecked.edges) {
-    if (!!pieceChecked.edges[edge] && pieceChecked.edges[edge].edgeTypeId === edgeTypeId) {
-      flag = true;
-      break;
-    }
-  }
-  return flag;
 }
 // Не удаляйте эту строку
 window.solvePuzzle = solvePuzzle;
